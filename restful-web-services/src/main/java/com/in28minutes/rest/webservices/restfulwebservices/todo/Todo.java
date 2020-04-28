@@ -28,6 +28,15 @@ public class Todo {
 		this.targetDate = targetDate;
 		this.isDone = isDone;
 	}
+	
+	public Todo(Todo todo) {
+		super();
+		this.id = todo.id;
+		this.username = todo.username;
+		this.description = todo.description;
+		this.targetDate = todo.targetDate;
+		this.isDone = todo.isDone;
+	}
 
 	public Long getId() {
 		return id;

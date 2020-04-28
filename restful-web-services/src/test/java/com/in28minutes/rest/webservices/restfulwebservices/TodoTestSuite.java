@@ -10,6 +10,9 @@ import java.awt.List;
 import java.util.ArrayList;
 import java.util.Date;
 
+import static org.mockito.Mockito.*;
+
+import org.apache.commons.lang3.RandomStringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,6 +31,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.in28minutes.rest.webservices.restfulwebservices.todo.Todo;
 
+import org.junit.Assert;
+
 
 public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 
@@ -45,18 +50,52 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 	public void testAddTodo() throws Exception {
 
 		System.out.println("Test Create");
-		Todo sample = new Todo(1,"Javier", "First Post", new Date(), false);
+
+		Todo sample = new Todo(1,"Jesus", "First Post", new Date(), false);
+		postTodo(sample);
+
+		ArrayList<Todo> todoList = new ArrayList<>();
+		todoList = getResponseObjects(getTodoString("Jesus"));
+		debugPrintTodos(todoList);
+		
+		sample = new Todo(1,"Javier", "First Post", new Date(), false);
 		postTodo(sample);
 
 		sample = new Todo(2,"Javier", "Second Post", new Date(), false);
 		postTodo(sample);
-		
+
+		sample.setId((long)4);
+		postTodo(sample);
 
 		System.out.println("Test Readback");
-		
-		ArrayList<Todo> todoList = new ArrayList<>();
 		todoList = getResponseObjects(getTodoString("Javier"));
 		debugPrintTodos(todoList);
+		
+	}
+	
+	@Test
+	public void testAddMultiple() throws Exception {
+
+		System.out.println("Test Create");
+		
+
+		int numberOfUsers=5;
+
+	    for(int u = 0 ; u < numberOfUsers; u++)
+	    {
+			
+			String newUser = RandomStringUtils.randomAlphanumeric(25);
+			    
+			int numberOfTasks = 50;
+	
+			createRandomPosts(newUser, numberOfTasks);
+	
+			ArrayList<Todo> todoList = new ArrayList<>();
+			todoList = getResponseObjects(getTodoString(newUser));
+			
+			Assert.assertEquals(numberOfTasks, todoList.size());
+	    
+	    }
 		
 	}
 	
@@ -72,6 +111,90 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 		debugPrintTodos(todoList);
 	}
 	
+	@Test
+	public void deleteMultiple() throws Exception {
+
+		int numberOfTasks = 50;
+
+		createRandomPosts("deleteMultipleUser", numberOfTasks);
+		
+		int numberOfDeletes = numberOfTasks/3;
+		
+		ArrayList<Todo> todoList = new ArrayList<>();
+		todoList = getResponseObjects(getTodoString("deleteMultipleUser"));
+
+	    for(int i = 0 ; i < numberOfDeletes; i++)
+	    {
+			deletePost(todoList.get(i));
+	    
+	    }
+	    
+	    //Refresh with the remaining To-Do's
+		todoList = getResponseObjects(getTodoString("deleteMultipleUser"));
+		
+		Assert.assertEquals(numberOfTasks-numberOfDeletes, todoList.size());
+		
+	}
+	
+	
+	@Test
+	public void testModify() throws Exception {
+
+		ArrayList<Todo> todoList = new ArrayList<>();
+		todoList = getResponseObjects(getTodoString("Javier"));
+		
+		Todo modified = new Todo(todoList.get(0));
+		System.out.println(modified);
+		modified.setDone(true);
+		modified.setDescription("Modified Todo");
+		modified.setTargetDate(new Date(690349616000L));
+		System.out.println(modified);
+
+		updateTodoItem(todoList.get(0), modified);
+		
+		todoList = getResponseObjects(getTodoString("Javier"));
+		debugPrintTodos(todoList);
+	}
+	
+	
+	@Test
+	public void testModifyMultiple() throws Exception {
+
+		int numberOfTasks = 50;
+
+		createRandomPosts("ModifyMultipleUser", numberOfTasks);
+		
+		int numberOfMods = numberOfTasks/3;
+		
+		ArrayList<Todo> todoList = new ArrayList<>();
+		todoList = getResponseObjects(getTodoString("deleteMultipleUser"));
+
+	    for(int i = 0 ; i < numberOfMods; i++)
+	    {
+			Todo modified = new Todo(todoList.get(i));
+			String newDescription = RandomStringUtils.randomAlphanumeric(75);
+			Date newDate = new Date(349616000L*i);
+			modified.setDescription(newDescription);
+			modified.setTargetDate(newDate);
+			modified.setDone(true);
+			updateTodoItem(todoList.get(i), modified);
+
+			ArrayList<Todo> updated = new ArrayList<>();
+			updated = getResponseObjects(getTodoString("ModifyMultipleUser"));
+			
+			Todo updatedItem = getTodo(todoList.get(i));
+
+			Assert.assertEquals(todoList.get(i).getId(), updatedItem.getId());
+			Assert.assertEquals(newDescription, updatedItem.getDescription());
+
+			Assert.assertEquals(newDate, updatedItem.getTargetDate());
+			
+			Assert.assertEquals(numberOfTasks, updated.size());
+			
+	    }
+		
+	}
+	
 	public void deletePost(Todo todo) throws Exception {
 		mockMvc.perform( MockMvcRequestBuilders
 			      .delete("/jpa/users/{username}/todos/{id}", todo.getUsername(), todo.getId()));
@@ -84,6 +207,16 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 			      .content(asJsonString(todoIn))
 			      .contentType(MediaType.APPLICATION_JSON)
 			      .accept(MediaType.APPLICATION_JSON));
+	}
+	
+	public void createRandomPosts(String username, int numberOfTasks) throws Exception {
+		Todo sample = new Todo();
+	    for(int i = 0 ; i < numberOfTasks; i++)
+	    {
+	    	String newDescription = RandomStringUtils.randomAlphanumeric(85);
+			sample = new Todo(0, username, newDescription, new Date(), false);
+			postTodo(sample);
+	    }
 	}
 	
 	public void debugPrintTodos(ArrayList<Todo> todoList)
@@ -109,6 +242,25 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 		return null;
 	}
 	
+	public Todo getTodo(Todo todo)
+	{
+		MvcResult result;
+		try {
+			result = mockMvc.perform( MockMvcRequestBuilders
+				      .get("/jpa/users/{username}/todos/{id}",todo.getUsername(), todo.getId())
+				      .accept(MediaType.APPLICATION_JSON))
+				      .andExpect(status().isOk()).andReturn();
+
+			Gson gson = new Gson();
+			return gson.fromJson( result.getResponse().getContentAsString(), Todo.class);
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
 	public void updateTodoItem(Todo todoIn,Todo todoOut) throws Exception 
 	{
 		mockMvc.perform( MockMvcRequestBuilders
@@ -120,10 +272,7 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 	    		  						 todoOut.isDone())))   
 	      .contentType(MediaType.APPLICATION_JSON)
 	      .accept(MediaType.APPLICATION_JSON))
-	      .andExpect(status().isOk())
-	      .andExpect(MockMvcResultMatchers.jsonPath("$.firstName").value("firstName2"))
-	      .andExpect(MockMvcResultMatchers.jsonPath("$.lastName").value("lastName2"))
-	      .andExpect(MockMvcResultMatchers.jsonPath("$.email").value("email2@mail.com"));
+	      .andExpect(status().isOk());
 	}
 
 	
