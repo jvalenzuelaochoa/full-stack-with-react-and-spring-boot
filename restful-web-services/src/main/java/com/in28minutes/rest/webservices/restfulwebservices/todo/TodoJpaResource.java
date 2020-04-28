@@ -44,7 +44,7 @@ public class TodoJpaResource {
 	// DELETE /users/{username}/todos/{id}
 	@DeleteMapping("/jpa/users/{username}/todos/{id}")
 	public ResponseEntity<Void> deleteTodo(
-			@PathVariable String username, @PathVariable long id) {
+			@PathVariable String username, @PathVariable("id") long id) {
 
 		todoJpaRepository.deleteById(id);
 

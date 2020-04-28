@@ -91,5 +91,14 @@ public class Todo {
 		return true;
 	}
 
+	@Override
+	public String toString() {
+
+		return  "ID: " + id.toString() + ",\n" +
+				"User: " + username.toString() +  ",\n" +
+				"Description: " + description.toString() +  ",\n" +
+				"Target: " + targetDate.toString() + ",\n" +
+				"ISDONE: " + String.valueOf(isDone);
 	
-}
+	}
+} 

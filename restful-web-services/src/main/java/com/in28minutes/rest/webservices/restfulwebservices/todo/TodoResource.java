@@ -38,15 +38,15 @@ public class TodoResource {
 
 	// DELETE /users/{username}/todos/{id}
 	@DeleteMapping("/users/{username}/todos/{id}")
-	public ResponseEntity<Void> deleteTodo(@PathVariable String username, @PathVariable long id) {
+	public ResponseEntity<HttpStatus> deleteTodo(@PathVariable String username, @PathVariable long id) {
 
 		Todo todo = todoService.deleteById(id);
 
 		if (todo != null) {
 			return ResponseEntity.noContent().build();
 		}
-
-		return ResponseEntity.notFound().build();
+		
+	    return new ResponseEntity<HttpStatus>(HttpStatus.ACCEPTED);
 	}
 	
 	//Edit/Update a Todo
