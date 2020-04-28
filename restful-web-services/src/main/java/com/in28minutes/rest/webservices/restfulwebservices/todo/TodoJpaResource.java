@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,7 +45,7 @@ public class TodoJpaResource {
 	// DELETE /users/{username}/todos/{id}
 	@DeleteMapping("/jpa/users/{username}/todos/{id}")
 	public ResponseEntity<Void> deleteTodo(
-			@PathVariable String username, @PathVariable long id) {
+			@PathVariable String username, @PathVariable("id") long id) {
 
 		todoJpaRepository.deleteById(id);
 
@@ -54,16 +55,25 @@ public class TodoJpaResource {
 
 	//Edit/Update a Todo
 	//PUT /users/{user_name}/todos/{todo_id}
+	@Transactional
 	@PutMapping("/jpa/users/{username}/todos/{id}")
 	public ResponseEntity<Todo> updateTodo(
 			@PathVariable String username,
-			@PathVariable long id, @RequestBody Todo todo){
+			@PathVariable ("id")long id, @RequestBody Todo todo){
 		
-		todo.setUsername(username);
-		
-		Todo todoUpdated = todoJpaRepository.save(todo);
-		
-		return new ResponseEntity<Todo>(todo, HttpStatus.OK);
+		Todo present = todoJpaRepository.findById(id).get();
+		if (present != null)
+		{
+			present.setUsername(username);
+			present.setDescription(todo.getDescription());
+			present.setTargetDate(todo.getTargetDate());
+			present.setDone(todo.isDone());
+			
+			System.out.println(present);
+			todoJpaRepository.save(present);
+			return new ResponseEntity<Todo>(present, HttpStatus.OK);
+		}
+		return null;
 	}
 	
 	@PostMapping("/jpa/users/{username}/todos")
