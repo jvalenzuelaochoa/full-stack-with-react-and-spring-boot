@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -49,6 +50,7 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 	@Test
 	public void testAddTodo() throws Exception {
 
+		// Simple hand-made Insertion test
 		System.out.println("Test Create");
 
 		Todo sample = new Todo(1,"Jesus", "First Post", new Date(), false);
@@ -100,8 +102,47 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 	}
 	
 	@Test
+	public void testAddInterleaved() throws Exception {
+
+		System.out.println("Test Create");
+		
+
+		int numberOfUsers=5;
+
+		int numberOfTasks = 50;
+
+		// Create random users
+		ArrayList<String> users = new ArrayList<>();
+
+	    for(int u = 0 ; u < numberOfUsers; u++)
+	    {
+			users.add(RandomStringUtils.randomAlphanumeric(25));
+			
+	    }
+	    
+	    // Start execution
+		for(int i = 0; i < numberOfTasks*numberOfUsers; i++)
+		{
+			// Create one random task and assign it to the interleaved user.
+			createRandomPosts(users.get(i%numberOfUsers), 1);
+	
+			// Check that the list of items for all users stays consistent.
+		    for(int u = 0 ; u < numberOfUsers; u++)
+		    {
+		    	ArrayList<Todo> todoList = new ArrayList<>();
+		    	todoList = getResponseObjects(getTodoString(users.get(u)));
+			
+		    	Assert.assertEquals( i/numberOfUsers + ( i % numberOfUsers >= u? 1:0), todoList.size());
+		    }
+	    
+	    }
+		
+	}
+	
+	@Test
 	public void testDeletion() throws Exception {
 
+		// Simple hand-made deletion test
 		ArrayList<Todo> todoList = new ArrayList<>();
 		todoList = getResponseObjects(getTodoString("Javier"));
 		
@@ -136,10 +177,10 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 		
 	}
 	
-	
+
 	@Test
 	public void testModify() throws Exception {
-
+		// Simple hand-made Modify test
 		ArrayList<Todo> todoList = new ArrayList<>();
 		todoList = getResponseObjects(getTodoString("Javier"));
 		
@@ -171,29 +212,56 @@ public class TodoTestSuite extends RestfulWebServicesApplicationTests {
 
 	    for(int i = 0 ; i < numberOfMods; i++)
 	    {
-			Todo modified = new Todo(todoList.get(i));
+	    	//Determine new values to be used in current To-Do
 			String newDescription = RandomStringUtils.randomAlphanumeric(75);
 			Date newDate = new Date(349616000L*i);
+			
+			Todo modified = new Todo(todoList.get(i));
 			modified.setDescription(newDescription);
 			modified.setTargetDate(newDate);
 			modified.setDone(true);
 			updateTodoItem(todoList.get(i), modified);
 
+			// Re-fresh with any modified To-Dos
 			ArrayList<Todo> updated = new ArrayList<>();
 			updated = getResponseObjects(getTodoString("ModifyMultipleUser"));
 			
+			// Make sure that a modified item for the selected ID can still be found.
 			Todo updatedItem = getTodo(todoList.get(i));
+			Assert.assertNotEquals(null, updatedItem);
 
+			// Check that the updated properties took effect.
 			Assert.assertEquals(todoList.get(i).getId(), updatedItem.getId());
 			Assert.assertEquals(newDescription, updatedItem.getDescription());
-
 			Assert.assertEquals(newDate, updatedItem.getTargetDate());
 			
+			// Check that the amount of To-Do items for the user is unmodified
 			Assert.assertEquals(numberOfTasks, updated.size());
 			
 	    }
 		
 	}
+	
+	@Test
+	public void testGetSimple() throws Exception {
+
+		String newDescription = RandomStringUtils.randomAlphanumeric(75);
+		Date newDate = new Date(349616000L);
+		Todo sample = new Todo(0, "SimpleTestUser", newDescription, newDate, false);
+		postTodo(sample);
+		
+		ArrayList<Todo> todoList = new ArrayList<>();
+		todoList = getResponseObjects(getTodoString("SimpleTestUser"));
+		
+		Assert.assertEquals(1, todoList.size());
+		Assert.assertEquals(newDescription, todoList.get(0).getDescription());
+		Assert.assertEquals(newDate, todoList.get(0).getTargetDate());
+				
+	}
+	
+	////////////////////////////////////////
+	///	HELPER METHODS
+	////////////////////////////////////////
 	
 	public void deletePost(Todo todo) throws Exception {
 		mockMvc.perform( MockMvcRequestBuilders
